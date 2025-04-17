@@ -1,8 +1,7 @@
 """
 federated_model.py
 
-Defines a simple federated learning model.
-For demonstration, a linear model using PyTorch is implemented.
+MLP model adaptable to both Fashion-MNIST and CIFAR-10 datasets.
 """
 
 import torch
@@ -10,38 +9,35 @@ import torch.nn as nn
 import numpy as np
 
 class FederatedModel:
-    def __init__(self, input_dim=10, output_dim=1):
-        self.model = nn.Linear(input_dim, output_dim)
+    def __init__(self, input_dim, output_dim=10):
+        self.model = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(input_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256, output_dim)
+        )
+        self.loss_fn = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01)
-    
-    def get_parameters(self):
-        """
-        Flattens model parameters into a single numpy array.
-        """
-        params = []
-        for param in self.model.parameters():
-            params.append(param.data.cpu().numpy().flatten())
-        return np.concatenate(params)
-    
-    def update_parameters(self, update):
-        """
-        Applies the aggregated update to the model parameters.
-        """
-        with torch.no_grad():
-            pointer = 0
-            for param in self.model.parameters():
-                num_params = param.data.numel()
-                update_slice = update[pointer:pointer+num_params]
-                update_tensor = torch.tensor(update_slice.reshape(param.data.shape), dtype=torch.float32)
-                param.add_(update_tensor)
-                pointer += num_params
-    
-    def forward(self, x):
-        return self.model(x)
 
-if __name__ == '__main__':
-    # Quick test of the model functionality
-    model = FederatedModel()
-    dummy_input = torch.randn(1, 10)
-    output = model.forward(dummy_input)
-    print("Model output:", output)
+    def train_on_client(self, data_loader, epochs=1):
+        self.model.train()
+        initial = self.get_parameters()
+        for _ in range(epochs):
+            for x, y in data_loader:
+                self.optimizer.zero_grad()
+                preds = self.model(x)
+                loss = self.loss_fn(preds, y)
+                loss.backward()
+                self.optimizer.step()
+        updated = self.get_parameters()
+        return updated - initial
+
+    def get_parameters(self):
+        return np.concatenate([p.data.cpu().numpy().flatten() for p in self.model.parameters()])
+
+    def update_parameters(self, update):
+        pointer = 0
+        for param in self.model.parameters():
+            numel = param.data.numel()
+            param.data.add_(torch.tensor(update[pointer:pointer+numel].reshape(param.data.shape), dtype=torch.float32))
+            pointer += numel
