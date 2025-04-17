@@ -1,17 +1,27 @@
 """
 label_flipping.py
-
-Implements a simple label-flipping attack.
+Flips labels in a client's local dataset from a source class to a target class.
 """
 
-def poison_update(update):
+def poison_update(subset, source_label=0, target_label=7):
     """
-    Simulates a label-flipping attack by inverting the sign of the update.
-    
-    Parameters:
-      update (np.array): Original update.
-      
-    Returns:
-      np.array: Poisoned update.
+    Flips labels in a torch.utils.data.Subset dataset from source_label to target_label.
+
+    description of parameters:
+        subset (torch.utils.data.Subset): A Subset of a dataset with a .targets attribute
+        source_label (int): Class label to flip from (airplane)
+        target_label (int): Class label to flip to (horse)
     """
-    return -update
+    dataset = subset.dataset
+    targets = dataset.targets
+
+    # make sure  targets is a mutable list
+    if not isinstance(targets, list):
+        targets = list(targets)
+
+    for idx in subset.indices:
+        if targets[idx] == source_label:
+            targets[idx] = target_label
+
+    dataset.targets = targets
+

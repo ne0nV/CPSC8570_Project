@@ -1,11 +1,12 @@
 experiment_name: "baseline_fl_demo"
-num_clients: 100
-num_attackers: 2
-rounds: 100
+num_clients: 10 #og is 100
+num_attackers: 3
+rounds: 10 #og is 100
 dataset: "CIFAR10"
 model: "SimpleCNN"
 attacks:
   - type: "label_flipping"
+    source_label: 0
     target_label: 7
 defenses:
   aggregation: "krum"
