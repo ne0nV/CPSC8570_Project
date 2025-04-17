@@ -22,7 +22,8 @@ This repository is an enhanced implementation of federated learning under data p
    `config/base_experiment.yaml`
 
    Example:
-   `
+   <br/>
+   ```
    experiment_name: "baseline_fl_demo"
    num_clients: 20
    num_attackers: 4
@@ -39,17 +40,18 @@ This repository is an enhanced implementation of federated learning under data p
      trust_system: true
    logging:
      output_dir: "logs/"
-   `
+   ```
 
-3. **Run the Experiment:**
+4. **Run the Experiment:**
    From the project root:
    `python main.py --config config/base_experiment.yaml`
 
    -OR-
+
    Use the Experiment Runner:
    `python experiments/run_experiment.py --config config/base_experiment.yaml`
 
-4. **View Results:**
+6. **View Results:**
    A CSV log of round-wise accuracy will be saved to:
    `logs/metrics.csv`
 
