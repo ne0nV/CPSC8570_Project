@@ -1,0 +1,16 @@
+experiment_name: "baseline_fl_demo"
+num_clients: 100
+num_attackers: 2
+rounds: 100
+dataset: "CIFAR10"
+model: "SimpleCNN"
+attacks:
+  - type: "label_flipping"
+    target_label: 7
+defenses:
+  aggregation: "krum"
+  differential_privacy: true
+  dp_std: 0.1
+  trust_system: true
+logging:
+  output_dir: "logs/"
