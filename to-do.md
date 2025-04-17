@@ -8,10 +8,10 @@
 - No real training or data  
 
 **To-do:**
-- Use real local datasets per client (e.g., MNIST, CIFAR10)  
-- Replace `<simulate_local_update>` with actual local training  
+- <s>Use real local datasets per client (e.g., MNIST, CIFAR10)</s>  
+- <s>Replace `<simulate_local_update>` with actual local training</s>  
 - Implement model serialization across rounds  
-- Allow CLI args for hyperparameter tuning? (`argparse`)  
+- <s>Allow CLI args for hyperparameter tuning? (`argparse`)</s>  
 
 ---
 
@@ -21,9 +21,9 @@
 - Simple linear model with random input/output  
 
 **To-do:**
-- Include architecture for images (CNNs)  
-- Add `.train_on_data(data)` method  
-- Build PyTorch `nn.Module` wrappers for `FedModel` abstraction  
+- <s>Include architecture for images (CNNs)</s>  
+- <s>Add `.train_on_data(data)` method</s>  
+- <s>Build PyTorch `nn.Module` wrappers for `FedModel` abstraction</s>  
 
 ---
 
@@ -76,9 +76,9 @@
 - Runs a single simulation via script  
 
 **To-do:**
-- Support multiple experiment configurations (YAML/JSON)  
+- <s>Support multiple experiment configurations (YAML/JSON)</s>  
 - Parameter sweeps: attacker ratio, noise levels, defense strategy  
-- Export logs/metrics to CSV or plotting dashboards  
+- <s>Export logs/metrics to CSV or plotting dashboards</s>  
 - Add automatic evaluation scripts to compute:
   - Attack success rate  
   - Global model accuracy  
@@ -91,8 +91,8 @@
 ### `data/`
 - Loaders for federated datasets (e.g., CIFAR-10, FMNIST)  
 
-### `config/`
-- YAML or JSON configs for experiment reproduction  
+### <s>`config/`</s>
+- <s>YAML or JSON configs for experiment reproduction</s>  
 
 ### `visuals/`
 - Plotting utilities for accuracy, trust scores, gradient norms  

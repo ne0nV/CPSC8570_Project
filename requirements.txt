@@ -4,3 +4,5 @@ torch
 torchvision
 scikit-learn
 matplotlib
+pyyaml
+pandas

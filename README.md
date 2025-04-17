@@ -17,11 +17,43 @@ This repository is an enhanced implementation of federated learning under data p
 1. **Install Dependencies:**
    `pip install -r requirements.txt`
 
-2. **Run the Main Simulation:**
-   `python main.py`
+2. **Configure Experiment:**
+   Open and edit the config file:
+   `config/base_experiment.yaml`
 
-3. **Run Experiments:**
-   `python experiments/run_experiment.py`
+   Example:
+   <br/>
+   ```
+   experiment_name: "baseline_fl_demo"
+   num_clients: 20
+   num_attackers: 4
+   rounds: 15
+   dataset: "CIFAR10"         # or "FashionMNIST"
+   model: "SimpleMLP"
+   attacks:
+     - type: "label_flipping"
+       target_label: 7
+   defenses:
+     aggregation: "krum"
+     differential_privacy: true
+     dp_std: 0.1
+     trust_system: true
+   logging:
+     output_dir: "logs/"
+   ```
+
+4. **Run the Experiment:**
+   From the project root:
+   `python main.py --config config/base_experiment.yaml`
+
+   -OR-
+
+   Use the Experiment Runner:
+   `python experiments/run_experiment.py --config config/base_experiment.yaml`
+
+6. **View Results:**
+   A CSV log of round-wise accuracy will be saved to:
+   `logs/metrics.csv`
 
 ## Notes
 
