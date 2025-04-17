@@ -1,16 +1,19 @@
 """
 cross_validation.py
 
-Provides a simple cross-validation function to evaluate the global model.
+Updated cross-validation function to evaluate the global model using torch.
 """
 
-import numpy as np
+import torch
 
-def validate_model(model):
-    """
-    Simulates cross-validation on the model.
-
-    Returns:
-      float: A dummy validation score between 0.4 and 0.9.
-    """
-    return np.random.uniform(0.4, 0.9)
+def validate_model(model, val_loader):
+    model.model.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for x, y in val_loader:
+            outputs = model.model(x)
+            _, predicted = torch.max(outputs.data, 1)
+            total += y.size(0)
+            correct += (predicted == y).sum().item()
+    return correct / total
