@@ -11,14 +11,7 @@ logger = logging.getLogger(__name__)
 def poison_client_data(client_loader, source_class=0, target_class=2):
     """
     Flips labels in a client's dataset from source_class to target_class.
-    
-    Args:
-        client_loader: DataLoader containing the client's data
-        source_class: Source class label to flip from
-        target_class: Target class label to flip to
-    
-    Returns:
-        The modified DataLoader with poisoned labels
+    returns the modified DataLoader with poisoned labels
     """
     dataset = client_loader.dataset
     flipped = 0
