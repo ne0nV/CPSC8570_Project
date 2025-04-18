@@ -105,8 +105,8 @@ def main():
             if cid < num_attackers:
                 attack_type = config['attacks'][0]['type']
                 if attack_type == 'label_flipping':
-                    source_class = config['attacks'][0].get('source_class', 0)
-                    target_class = config['attacks'][0].get('target_class', 2)
+                    source_class = config['attacks'][0].get('source_class')
+                    target_class = config['attacks'][0].get('target_class')
                     # Modify the client's data before training
                     current_loader = label_flipping.poison_client_data(
                         loader, source_class=source_class, target_class=target_class)

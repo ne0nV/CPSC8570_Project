@@ -6,8 +6,8 @@ dataset: "FashionMNIST"
 model: "SimpleCNN"
 attacks:
   - type: "label_flipping"
-    source_label: 4 # cifar is 0 but fashion is 4 (coat)
-    target_label: 6 # cifar is 2 but fashion is 6 (shirt)
+    source_class: 4 # cifar is 0 but fashion is 4 (coat)
+    target_class: 6 # cifar is 2 but fashion is 6 (shirt)
 defenses:
   aggregation: "krum"
   differential_privacy: true

@@ -8,7 +8,7 @@ import torch
 
 logger = logging.getLogger(__name__)
 
-def poison_client_data(client_loader, source_class=0, target_class=2):
+def poison_client_data(client_loader, source_class, target_class):
     """
     Flips labels in a client's dataset from source_class to target_class.
     returns the modified DataLoader with poisoned labels
@@ -16,14 +16,11 @@ def poison_client_data(client_loader, source_class=0, target_class=2):
     dataset = client_loader.dataset
     flipped = 0
     
-    # Get access to the underlying dataset if it's a subset
     if hasattr(dataset, 'dataset'):
-        # It's a subset
         subset = dataset
         parent_dataset = subset.dataset
         indices = subset.indices
         
-        # Access targets
         if hasattr(parent_dataset, 'targets'):
             targets = parent_dataset.targets
             
@@ -41,11 +38,9 @@ def poison_client_data(client_loader, source_class=0, target_class=2):
                     targets[idx] = target_class
                     flipped += 1
     else:
-        # Direct dataset access
         if hasattr(dataset, 'targets'):
             targets = dataset.targets
             
-            # Convert to list if needed
             if isinstance(targets, torch.Tensor):
                 targets = targets.tolist()
                 dataset.targets = targets
@@ -53,8 +48,6 @@ def poison_client_data(client_loader, source_class=0, target_class=2):
                 targets = list(targets)
                 dataset.targets = targets
             
-            # Flip labels
-            flipped = 0
             for i in range(len(targets)):
                 if targets[i] == source_class:
                     targets[i] = target_class
