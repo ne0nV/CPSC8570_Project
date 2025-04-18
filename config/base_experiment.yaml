@@ -2,12 +2,12 @@ experiment_name: "baseline_fl_demo"
 num_clients: 50 #og is 100
 num_attackers: 5
 rounds: 10 #og is 100
-dataset: "CIFAR10"
+dataset: "FashionMNIST"
 model: "SimpleCNN"
 attacks:
   - type: "label_flipping"
-    source_label: 0
-    target_label: 2
+    source_label: 4 # cifar is 0 but fashion is 4 (coat)
+    target_label: 6 # cifar is 2 but fashion is 6 (shirt)
 defenses:
   aggregation: "krum"
   differential_privacy: true

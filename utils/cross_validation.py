@@ -34,8 +34,8 @@ def validate_model(model, val_loader):
         print(f"Class {i}: {acc:.4f}")
     
     # Check for targeted attack effect
-    source_class = 0  # airplane
-    target_class = 2  # bird
+    source_class = 4  # coat
+    target_class = 6  # shirt
     misclass_rate = 0
     if confusion[source_class].sum() > 0:  # Avoid division by zero
         misclass_rate = confusion[source_class, target_class] / np.sum(confusion[source_class])
