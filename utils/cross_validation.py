@@ -61,10 +61,18 @@ def validate_model(model, val_loader):
 
     # Check for targeted attack effect
     source_class = 0  # Default to airplane/source class
-    target_class = 7  # Default to horse/target class
+    target_class = 2  # Default to horse/target class
 
     if confusion[source_class].sum() > 0:  # Avoid division by zero
         misclass_rate = confusion[source_class, target_class] / np.sum(confusion[source_class])
         print(f"\nMisclassification rate from class {source_class} to {target_class}: {misclass_rate:.4f}")
 
-    return accuracy
+    # Calculate additional metrics
+    metrics = {
+        'accuracy': accuracy,
+        'per_class_recall': per_class_acc,
+        'source_class_recall': per_class_acc[0],  # Class 0 recall
+        'source_to_target_rate': confusion[0, 2] / np.sum(confusion[0]) if np.sum(confusion[0]) > 0 else 0,
+    }
+    
+    return metrics  # Return all metrics instead of just accuracy

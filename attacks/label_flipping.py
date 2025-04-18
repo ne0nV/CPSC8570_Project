@@ -1,27 +1,71 @@
 """
 label_flipping.py
-Flips labels in a client's local dataset from a source class to a target class.
+Implements label flipping attacks as described in "Data Poisoning Attacks 
+Against Federated Learning Systems"
 """
+import logging
+import torch
 
-def poison_update(subset, source_label=0, target_label=7):
+logger = logging.getLogger(__name__)
+
+def poison_client_data(client_loader, source_class=0, target_class=2):
     """
-    Flips labels in a torch.utils.data.Subset dataset from source_label to target_label.
-
-    description of parameters:
-        subset (torch.utils.data.Subset): A Subset of a dataset with a .targets attribute
-        source_label (int): Class label to flip from (airplane)
-        target_label (int): Class label to flip to (horse)
+    Flips labels in a client's dataset from source_class to target_class.
+    
+    Args:
+        client_loader: DataLoader containing the client's data
+        source_class: Source class label to flip from
+        target_class: Target class label to flip to
+    
+    Returns:
+        The modified DataLoader with poisoned labels
     """
-    dataset = subset.dataset
-    targets = dataset.targets
-
-    # make sure  targets is a mutable list
-    if not isinstance(targets, list):
-        targets = list(targets)
-
-    for idx in subset.indices:
-        if targets[idx] == source_label:
-            targets[idx] = target_label
-
-    dataset.targets = targets
-
+    dataset = client_loader.dataset
+    flipped = 0
+    
+    # Get access to the underlying dataset if it's a subset
+    if hasattr(dataset, 'dataset'):
+        # It's a subset
+        subset = dataset
+        parent_dataset = subset.dataset
+        indices = subset.indices
+        
+        # Access targets
+        if hasattr(parent_dataset, 'targets'):
+            targets = parent_dataset.targets
+            
+            # Convert to list if it's a tensor or other type
+            if isinstance(targets, torch.Tensor):
+                targets = targets.tolist()
+                parent_dataset.targets = targets
+            elif not isinstance(targets, list):
+                targets = list(targets)
+                parent_dataset.targets = targets
+            
+            # Count flipped labels
+            for idx in indices:
+                if targets[idx] == source_class:
+                    targets[idx] = target_class
+                    flipped += 1
+    else:
+        # Direct dataset access
+        if hasattr(dataset, 'targets'):
+            targets = dataset.targets
+            
+            # Convert to list if needed
+            if isinstance(targets, torch.Tensor):
+                targets = targets.tolist()
+                dataset.targets = targets
+            elif not isinstance(targets, list):
+                targets = list(targets)
+                dataset.targets = targets
+            
+            # Flip labels
+            flipped = 0
+            for i in range(len(targets)):
+                if targets[i] == source_class:
+                    targets[i] = target_class
+                    flipped += 1
+    
+    print(f"Label flipping: changed {flipped} instances from class {source_class} to {target_class}")
+    return client_loader

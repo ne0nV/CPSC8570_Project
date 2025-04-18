@@ -67,33 +67,45 @@ def main():
     for rnd in range(rounds):
         print(f"\n--- Round {rnd+1} ---")
         updates = []
-
         for cid, loader in enumerate(client_loaders):
-            update = global_model.train_on_client(loader)
-
+        # Apply attacks to the data before training for malicious clients
+            current_loader = loader
             if cid < num_attackers:
                 attack_type = config['attacks'][0]['type']
                 if attack_type == 'label_flipping':
-                    update = label_flipping.poison_update(update)
+                    source_class = config['attacks'][0].get('source_class', 0)
+                    target_class = config['attacks'][0].get('target_class', 2)
+                    # Modify the client's data before training
+                    current_loader = label_flipping.poison_client_data(
+                        loader, source_class=source_class, target_class=target_class)
+                    print(f"Client {cid}: {attack_type} attack applied (flipping class {source_class} to {target_class}).")
                 elif attack_type == 'backdoor':
-                    update = backdoor_attack.poison_update(update)
+                    current_loader = backdoor_attack.poison_client_data(loader)
+                    print(f"Client {cid}: {attack_type} attack applied.")
                 elif attack_type == 'data_injection':
-                    update = data_injection.poison_update(update)
-                print(f"Client {cid}: {attack_type} attack applied.")
+                    current_loader = data_injection.poison_client_data(loader)
+                    print(f"Client {cid}: {attack_type} attack applied.")
 
+            # Train using the possibly poisoned data
+            update = global_model.train_on_client(current_loader)
             weight = reputation.get_trust(cid)
             updates.append(weight * update)
 
-        aggregated = krum_aggregation(updates, f=1)
+
+        #aggregated = krum_aggregation(updates, f=1) replacing this to be simpler for testing purposes of attack
+        aggregated = sum(updates) / len(updates)  # Simple averaging
+
         if dp_enabled:
             aggregated = add_dp_noise(aggregated, dp_std)
 
         global_model.update_parameters(aggregated)
-        acc = validate_model(global_model, val_loader)
-        print(f"Validation Accuracy: {acc:.4f}")
-        log.append({'round': rnd + 1, 'accuracy': acc})
-        reputation.update([(cid, updates[cid]) for cid in range(num_clients)], acc)
-        monitor_performance(rnd, acc)
+        metrics = validate_model(global_model, val_loader)
+        print(f"Validation Accuracy: {metrics['accuracy']:.4f}")
+        print(f"Source class (0) recall: {metrics['source_class_recall']:.4f}")
+        print(f"Misclassification rate from source to target: {metrics['source_to_target_rate']:.4f}")
+        log.append({'round': rnd + 1, 'accuracy': metrics['accuracy']})
+        reputation.update([(cid, updates[cid]) for cid in range(num_clients)], metrics['accuracy'])
+        monitor_performance(rnd, metrics['accuracy'])
 
     os.makedirs(config['logging']['output_dir'], exist_ok=True)
     log_path = os.path.join(config['logging']['output_dir'], 'metrics.csv')
