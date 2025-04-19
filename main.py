@@ -14,7 +14,7 @@ from defenses.robust_aggregation import krum_aggregation
 from defenses.differential_privacy import add_dp_noise
 from defenses.reputation_system import ReputationSystem
 from defenses.monitoring import monitor_performance
-from attacks import label_flipping, backdoor_attack, data_injection
+from attacks import label_flipping
 import os
 import pandas as pd
 from torchvision import datasets, transforms
@@ -31,20 +31,32 @@ def load_dataset(name, num_clients):
     """
     if name == "FashionMNIST":
         dataset_class = datasets.FashionMNIST
-        input_size = 28 * 28
+        input_channels = 1
     elif name == "CIFAR10":
         dataset_class = datasets.CIFAR10
-        input_size = 3 * 32 * 32
+        input_channels = 3
     else:
         raise ValueError(f"Unsupported dataset: {name}")
-    
-    transform = transforms.Compose([transforms.ToTensor()])
-    train_data = dataset_class(root='./data', train=True, download=True, transform=transform)
-    val_data = dataset_class(root='./data', train=False, download=True, transform=transform)
-    
-    val_loader = torch.utils.data.DataLoader(val_data, batch_size=32)
-    
-    return train_data, val_loader, input_size
+
+    transform = transforms.Compose([
+        transforms.ToTensor()
+    ])
+
+    train_dataset = dataset_class(root='./data', train=True, download=True, transform=transform)
+    val_dataset = dataset_class(root='./data', train=False, download=True, transform=transform)
+
+    data_per_client = len(train_dataset) // num_clients
+    client_loaders = []
+
+    for i in range(num_clients):
+        indices = list(range(i * data_per_client, (i + 1) * data_per_client))
+        subset = torch.utils.data.Subset(train_dataset, indices)
+        loader = torch.utils.data.DataLoader(subset, batch_size=32, shuffle=True)
+        client_loaders.append(loader)
+
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=32)
+
+    return client_loaders, val_loader, input_channels
 
 
 def distribute_data_to_clients(train_data, num_clients, seed=None):
@@ -85,18 +97,15 @@ def main():
     dp_enabled = config['defenses']['differential_privacy']
     dp_std = config['defenses'].get('dp_std', 0.1)
     
-    # Load the full dataset but don't distribute yet
-    train_data, val_loader, input_size = load_dataset(config['dataset'], num_clients)
+    # Load the full dataset AND distribute
+    client_loaders, val_loader, input_channels = load_dataset(config['dataset'], num_clients)
     
-    global_model = FederatedModel(input_dim=input_size, output_dim=10)
+    global_model = FederatedModel(input_channels=input_channels, output_dim=10)
     reputation = ReputationSystem(num_clients)
     log = []
     
     for rnd in range(rounds):
         print(f"\n--- Round {rnd+1} ---")
-        
-        # Distribute data differently in each round
-        client_loaders = distribute_data_to_clients(train_data, num_clients, seed=rnd)
         
         updates = []
         for cid, loader in enumerate(client_loaders):
