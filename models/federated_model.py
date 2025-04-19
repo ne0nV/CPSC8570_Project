@@ -1,7 +1,7 @@
 """
 federated_model.py
 
-MLP model adaptable to both Fashion-MNIST and CIFAR-10 datasets.
+CNN model adaptable to both Fashion-MNIST and CIFAR-10 datasets.
 """
 
 import torch
@@ -9,15 +9,32 @@ import torch.nn as nn
 import numpy as np
 
 class FederatedModel:
-    def __init__(self, input_dim, output_dim=10):
+    def __init__(self, input_channels=1, output_dim=10):
         self.model = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(input_dim, 256),
+            nn.Conv2d(input_channels, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
             nn.ReLU(),
+            nn.MaxPool2d(2, 2),  # Downsample
+            
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+            
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d((4, 4)),  # Output 128x4x4 feature map
+            
+            nn.Flatten(),
+            nn.Linear(128 * 4 * 4, 256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
             nn.Linear(256, output_dim)
         )
+
         self.loss_fn = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01)
+        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01, momentum=0.9)
 
     def train_on_client(self, data_loader, epochs=1):
         self.model.train()
