@@ -1,9 +1,3 @@
-"""
-main.py
-
-Federated learning simulation with support for CIFAR-10 and Fashion-MNIST.
-"""
-
 import argparse
 import yaml
 import numpy as np
@@ -45,46 +39,9 @@ def load_dataset(name, num_clients):
     train_dataset = dataset_class(root='./data', train=True, download=True, transform=transform)
     val_dataset = dataset_class(root='./data', train=False, download=True, transform=transform)
 
-    data_per_client = len(train_dataset) // num_clients
-    client_loaders = []
-
-    for i in range(num_clients):
-        indices = list(range(i * data_per_client, (i + 1) * data_per_client))
-        subset = torch.utils.data.Subset(train_dataset, indices)
-        loader = torch.utils.data.DataLoader(subset, batch_size=32, shuffle=True)
-        client_loaders.append(loader)
-
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=32)
 
-    return client_loaders, val_loader, input_channels
-
-
-def distribute_data_to_clients(train_data, num_clients, seed=None):
-    """
-    Distribute data to clients in a new way each round. 
-    """
-    if seed is not None:
-        torch.manual_seed(seed)
-        np.random.seed(seed)
-    
-    total_size = len(train_data)
-    
-    indices = torch.randperm(total_size).tolist()
-    
-    data_per_client = total_size // num_clients
-    
-    client_loaders = []
-    for i in range(num_clients):
-        start_idx = i * data_per_client
-        end_idx = (i + 1) * data_per_client if i < num_clients - 1 else total_size
-        
-        client_indices = indices[start_idx:end_idx]
-        
-        subset = torch.utils.data.Subset(train_data, client_indices)
-        loader = torch.utils.data.DataLoader(subset, batch_size=32, shuffle=True)
-        client_loaders.append(loader)
-    
-    return client_loaders
+    return train_dataset, val_loader, input_channels
 
 def main():
     args = parse_args()
@@ -97,8 +54,8 @@ def main():
     dp_enabled = config['defenses']['differential_privacy']
     dp_std = config['defenses'].get('dp_std', 0.1)
     
-    # Load the full dataset AND distribute
-    client_loaders, val_loader, input_channels = load_dataset(config['dataset'], num_clients)
+    # Load the full dataset but don't distribute yet
+    train_dataset, val_loader, input_channels = load_dataset(config['dataset'], num_clients)
     
     global_model = FederatedModel(input_channels=input_channels, output_dim=10)
     reputation = ReputationSystem(num_clients)
@@ -107,28 +64,64 @@ def main():
     for rnd in range(rounds):
         print(f"\n--- Round {rnd+1} ---")
         
+        # Create a fresh copy of the training dataset
+        # Distribute data differently in each round
+        total_size = len(train_dataset)
+        indices = torch.randperm(total_size).tolist()
+        data_per_client = total_size // num_clients
+        
+        client_loaders = []
+        for i in range(num_clients):
+            start_idx = i * data_per_client
+            end_idx = (i + 1) * data_per_client if i < num_clients - 1 else total_size
+            
+            client_indices = indices[start_idx:end_idx]
+            subset = torch.utils.data.Subset(train_dataset, client_indices)
+            loader = torch.utils.data.DataLoader(subset, batch_size=32, shuffle=True)
+            client_loaders.append(loader)
+        
         updates = []
         for cid, loader in enumerate(client_loaders):
             # Apply attacks to the data before training for malicious clients
-            current_loader = loader
             if cid < num_attackers:
                 attack_type = config['attacks'][0]['type']
                 if attack_type == 'label_flipping':
                     source_class = config['attacks'][0].get('source_class')
                     target_class = config['attacks'][0].get('target_class')
-                    # Modify the client's data before training
-                    current_loader = label_flipping.poison_client_data(
-                        loader, source_class=source_class, target_class=target_class)
+                    
+                    # Simple but effective label flipping implementation
+                    subset = loader.dataset
+                    dataset = subset.dataset
+                    indices = subset.indices
+                    
+                    # Count flips for logging
+                    flipped = 0
+                    
+                    # Create a temporary dataset with flipped labels for training
+                    targets_copy = dataset.targets.clone() if isinstance(dataset.targets, torch.Tensor) else dataset.targets.copy()
+                    original_targets = dataset.targets
+                    dataset.targets = targets_copy  # Use the copy for this round
+                    
+                    # Apply flipping
+                    for idx in indices:
+                        if dataset.targets[idx] == source_class:
+                            dataset.targets[idx] = target_class
+                            flipped += 1
+                    
+                    print(f"Label flipping: changed {flipped} instances from class {source_class} to {target_class}")
                     print(f"Client {cid}: {attack_type} attack applied (flipping class {source_class} to {target_class}).")
-                elif attack_type == 'backdoor':
-                    current_loader = backdoor_attack.poison_client_data(loader)
-                    print(f"Client {cid}: {attack_type} attack applied.")
-                elif attack_type == 'data_injection':
-                    current_loader = data_injection.poison_client_data(loader)
-                    print(f"Client {cid}: {attack_type} attack applied.")
+                    
+                    # Train with poisoned data
+                    update = global_model.train_on_client(loader)
+                    
+                    # Restore original targets for the next round
+                    dataset.targets = original_targets
+                else:
+                    # Handle other attack types
+                    update = global_model.train_on_client(loader)
+            else:
+                update = global_model.train_on_client(loader)
             
-            # Train using the possibly poisoned data
-            update = global_model.train_on_client(current_loader)
             weight = reputation.get_trust(cid)
             updates.append(weight * update)
         
@@ -142,7 +135,7 @@ def main():
         
         metrics = validate_model(global_model, val_loader)
         print(f"Validation Accuracy: {metrics['accuracy']:.4f}")
-        print(f"Source class (0) recall: {metrics['source_class_recall']:.4f}")
+        print(f"Source class recall: {metrics['source_class_recall']:.4f}")
         print(f"Misclassification rate from source to target: {metrics['source_to_target_rate']:.4f}")
         
         log.append({
