@@ -25,7 +25,7 @@ def plot_accuracy(log_path="logs/metrics.csv"):
     plt.tight_layout()
     
     # Save the figure automatically
-    save_path = "logs/accuracy_plot.png"
+    save_path = log_path.replace("csv","png")
     plt.savefig(save_path)
     print(f"Plot saved as {save_path}")
 
